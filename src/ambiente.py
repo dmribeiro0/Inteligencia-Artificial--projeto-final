@@ -63,8 +63,52 @@ INDICADORES = [
     "Healthcare",
 ]
 
+# ---------------------------------------------------------------------------
+# Desvio-padrão dos indicadores (obtido do Atlas IDHM)
+# Utilizado para calibrar a intensidade das transições.
+# ---------------------------------------------------------------------------
+
+STD_INDICADORES = {
+    "CleanEnergy": 0.601,
+    "Mobility":    1.904,
+    "AirQuality":  0.622,
+    "Economy":     1.624,
+    "Employment":  1.575,
+    "Housing":     0.740,
+    "Education":   2.090,
+    "Healthcare":  2.612,
+}
+
 # Fallback neutro (usado apenas se nenhum arquivo for encontrado)
 ESTADO_INICIAL_PADRAO = {ind: 5.0 for ind in INDICADORES}
+
+# ---------------------------------------------------------------------------
+# Intensidades das transições
+# ---------------------------------------------------------------------------
+
+PESOS_IMPACTO = {
+    "forte": 0.50,
+    "medio": 0.25,
+    "fraco": 0.10,
+}
+
+def calcular_delta(indicador, intensidade, sinal):
+    """
+    Calcula o delta aplicado ao indicador.
+
+    intensidade:
+        "forte"
+        "medio"
+        "fraco"
+
+    sinal:
+        +1  -> melhora o indicador
+        -1  -> piora o indicador
+    """
+
+    std = STD_INDICADORES[indicador]
+
+    return sinal * PESOS_IMPACTO[intensidade] * std
 
 # ---------------------------------------------------------------------------
 # Matriz de transição
@@ -73,38 +117,96 @@ ESTADO_INICIAL_PADRAO = {ind: 5.0 for ind in INDICADORES}
 # Calibrados com base nas correlações observadas nos dados do Atlas IDHM.
 # ---------------------------------------------------------------------------
 TRANSICOES = {
+    
+    # -------------------------------------------------------------
     # A1 — Construir Usina Solar
-    0: {"CleanEnergy": +1.5, "AirQuality": +0.8, "Economy": -0.5,
-        "Employment": +0.3, "Mobility":  0.0, "Housing":  0.0,
-        "Education":  0.0, "Healthcare": +0.1},
+    # -------------------------------------------------------------
+    0: {
+        "CleanEnergy": ("forte", +1),
+        "AirQuality":  ("medio", +1),
+        "Economy":     ("medio", -1),
+        "Employment":  ("fraco", +1),
+        "Healthcare":  ("fraco", +1),
+    },
+
+    # -------------------------------------------------------------
     # A2 — Expandir Transporte Público
-    1: {"Mobility":    +1.5, "AirQuality": +0.5, "Economy": -0.4,
-        "Employment": +0.2, "CleanEnergy": 0.0, "Housing":  0.0,
-        "Education":  0.0, "Healthcare": +0.1},
+    # -------------------------------------------------------------
+    1: {
+        "Mobility":     ("forte", +1),
+        "AirQuality":   ("medio", +1),
+        "Economy":      ("medio", -1),
+        "Employment":   ("fraco", +1),
+        "Healthcare":   ("fraco", +1),
+    },
+
+    # -------------------------------------------------------------
     # A3 — Programa de Controle de Emissões
-    2: {"AirQuality":  +1.5, "CleanEnergy": +0.3, "Economy": -0.3,
-        "Employment": -0.2, "Mobility":  0.0, "Housing":  0.0,
-        "Education":  0.0, "Healthcare": +0.2},
+    # -------------------------------------------------------------
+    2: {
+        "AirQuality":   ("forte", +1),
+        "CleanEnergy":  ("fraco", +1),
+        "Economy":      ("fraco", -1),
+        "Employment":   ("fraco", -1),
+        "Healthcare":   ("fraco", +1),
+    },
+
+    # -------------------------------------------------------------
     # A4 — Incentivo Industrial
-    3: {"Economy":     +1.5, "Employment": +0.8, "AirQuality": -0.8,
-        "CleanEnergy": -0.3, "Mobility": -0.2, "Housing":  0.0,
-        "Education":  0.0, "Healthcare": -0.1},
+    # -------------------------------------------------------------
+    3: {
+        "Economy":      ("forte", +1),
+        "Employment":   ("medio", +1),
+        "AirQuality":   ("medio", -1),
+        "CleanEnergy":  ("fraco", -1),
+        "Mobility":     ("fraco", -1),
+        "Healthcare":   ("fraco", -1),
+    },
+
+    # -------------------------------------------------------------
     # A5 — Programa de Geração de Empregos
-    4: {"Employment":  +1.5, "Economy":   +0.5, "Education": +0.2,
-        "Housing":    +0.1, "CleanEnergy": 0.0, "Mobility":  0.0,
-        "AirQuality": -0.1, "Healthcare":  0.0},
+    # -------------------------------------------------------------
+    4: {
+        "Employment":   ("forte", +1),
+        "Economy":      ("medio", +1),
+        "Education":    ("fraco", +1),
+        "Housing":      ("fraco", +1),
+        "AirQuality":   ("fraco", -1),
+    },
+
+    # -------------------------------------------------------------
     # A6 — Construção de Habitação Popular
-    5: {"Housing":     +1.5, "Healthcare": +0.3, "Economy":  -0.4,
-        "Employment": +0.2, "CleanEnergy": -0.1, "Mobility": -0.1,
-        "AirQuality":  0.0, "Education":   0.0},
+    # -------------------------------------------------------------
+    5: {
+        "Housing":      ("forte", +1),
+        "Healthcare":   ("medio", +1),
+        "Economy":      ("medio", -1),
+        "Employment":   ("fraco", +1),
+        "CleanEnergy":  ("fraco", -1),
+        "Mobility":     ("fraco", -1),
+    },
+
+    # -------------------------------------------------------------
     # A7 — Construção de Escolas
-    6: {"Education":   +1.5, "Employment": +0.3, "Economy":  -0.3,
-        "Housing":    +0.1, "CleanEnergy":  0.0, "Mobility":  0.0,
-        "AirQuality":  0.0, "Healthcare":  +0.1},
+    # -------------------------------------------------------------
+    6: {
+        "Education":    ("forte", +1),
+        "Employment":   ("medio", +1),
+        "Economy":      ("fraco", -1),
+        "Housing":      ("fraco", +1),
+        "Healthcare":   ("fraco", +1),
+    },
+
+    # -------------------------------------------------------------
     # A8 — Construção de Hospitais
-    7: {"Healthcare":  +1.5, "Housing":    +0.2, "Economy":  -0.3,
-        "Employment": +0.3, "CleanEnergy":  0.0, "Mobility":  0.0,
-        "AirQuality": +0.1, "Education":    0.0},
+    # -------------------------------------------------------------
+    7: {
+        "Healthcare":   ("forte", +1),
+        "Housing":      ("fraco", +1),
+        "Economy":      ("fraco", -1),
+        "Employment":   ("fraco", +1),
+        "AirQuality":   ("fraco", +1),
+    },
 }
 
 
@@ -237,7 +339,8 @@ class CidadeSustentavelEnv:
         assert 0 <= acao < NUM_ACOES, f"Ação inválida: {acao}"
 
         # Aplica deltas com ruído gaussiano e clipa em [0, 10]
-        for indicador, delta in TRANSICOES[acao].items():
+        for indicador, (intensidade, sinal) in TRANSICOES[acao].items():
+            delta = calcular_delta(indicador, intensidade, sinal)
             ruido     = np.random.normal(0, self.ruido)
             novo_val  = self.estado[indicador] + delta + ruido
             self.estado[indicador] = float(np.clip(novo_val, 0.0, 10.0))
