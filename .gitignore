@@ -2,3 +2,7 @@
 *.xlsx
 *.json
 *.png
+__pycache__/
+*.pyc
+*.pt
+*.pkl
